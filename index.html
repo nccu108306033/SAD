@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>SAD Group 6</title>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/4.12.1/firebase.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+      integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
+      crossorigin="anonymous"
+    />
+    <!--link href="assets/favicon.ico" rel="shortcut icon" type="image/x-icon"-->
+    <!--link href="assets/style.css" rel="stylesheet" type="text/css"-->
+    <!--script src="assets/script.js"></script-->
+    <style>
+      .hidden {
+        display: none;
+      }
+      div {
+        border: #000000 1px solid;
+      }
+      body {
+        margin: 1em;
+      }
+    </style>
+    <script>
+      document.addEventListener("DOMContentLoaded", init);
+
+      function init() {
+        firebase.initializeApp({
+          databaseURL: "https://nccumis-109sad-g6-default-rtdb.firebaseio.com/",
+        });
+
+        window.db = firebase.database();
+
+        window.titleName = "SAD Group 6";
+
+        window.request = {
+          func: "init", //default; could Load by cookie
+          parameter: {},
+          identity: {},
+          //isLogin: false, //Load by cookie
+        };
+        window.isLogin = false;
+
+        db.ref("/")
+          .once("value")
+          .then((snapshot) => {
+            window.data = snapshot.val();
+            onChange();
+            doPost(window.request);
+          });
+      }
+
+      function onChange() {
+        for (let i = 0; i < data.length; i++) {
+          db.ref("/" + data[i]).on(
+            "value".then((snapshot) => {
+              window[data[i]] = snapshot.val();
+            })
+          );
+        }
+      }
+
+      function doPost(request) {
+        if (!isLogin) {
+          login(request);
+          return;
+        }
+        switch (request.func) {
+          case "takenList":
+            takenList(request);
+            break;
+          case "creditList":
+            creditList(request);
+            break;
+          case "registerList":
+            registerList(request);
+            break;
+          case "scheduleList":
+            scheduleList(request);
+            break;
+          default:
+            console.log(request.func);
+            break;
+        }
+      }
+
+      function login(request) {
+        // console.log(request.func);
+        if (request.func == "login") {
+          auth();
+        }
+
+        if (request.func != "init" && request.func != "logout") {
+          return;
+        }
+
+        document.body.innerHTML =
+          '<input type="hidden" id="func" name="func" value="' +
+          request.func +
+          '">';
+
+        //Create Element
+        const formContainer = document.createElement("div");
+        formContainer.id = "formContainer";
+
+        const titleText = document.createElement("p");
+        // titleText.classList.add("")
+        titleText.id = "titleText";
+        titleText.innerHTML = "Timetable Arrangement System 排課系統";
+
+        const formControl = document.createElement("form");
+        // formControl.classList.add("")
+        formControl.id = "formControl";
+
+        const accountContainer = document.createElement("div");
+        // accountContainer.classList.add("")
+        accountContainer.id = "accountContainer";
+
+        const accountLabel = document.createElement("span");
+        // accountLabel.classList.add("")
+        accountLabel.id = "accountLabel";
+        accountLabel.innerHTML = "Account 帳號：";
+
+        const accountInput = document.createElement("input");
+        // accountInput.classList.add("")
+        accountInput.type = "text";
+        accountInput.id = "accountInput";
+        accountInput.name = "account";
+
+        const passwordContainer = document.createElement("div");
+        // passwordContainer.classList.add("")
+        passwordContainer.id = "passwordContainer";
+
+        const passwordLabel = document.createElement("span");
+        // passwordLabel.classList.add("")
+        passwordLabel.id = "passwordLabel";
+        passwordLabel.innerHTML = "Password 密碼：";
+
+        const passwordInput = document.createElement("input");
+        // passwordInput.classList.add("")
+        passwordInput.type = "password";
+        passwordInput.id = "passwordInput";
+        passwordInput.name = "password";
+
+        const messageLabel = document.createElement("p");
+        messageLabel.classList.add("hidden");
+        messageLabel.id = "messageLabel";
+        messageLabel.innerHTML = "";
+
+        const submitButton = document.createElement("button");
+        // submitButton.classList.add("")
+        submitButton.id = "submitButton";
+        submitButton.name = "submit";
+        submitButton.innerHTML = "Login 登入";
+        submitButton.type = "button";
+        submitButton.addEventListener("click", (e) => {
+          window.request.func = "login";
+          window.request.parameter = {
+            account: accountInput.value,
+            password: passwordInput.value,
+          };
+          //   console.log(request);
+          doPost(request);
+        });
+
+        //Append Element
+        accountContainer.append(accountLabel);
+        accountContainer.append(accountInput);
+        formControl.append(accountContainer);
+
+        passwordContainer.append(passwordLabel);
+        passwordContainer.append(passwordInput);
+        formControl.append(passwordContainer);
+
+        formControl.append(messageLabel);
+
+        formControl.append(submitButton);
+
+        formContainer.append(titleText);
+        formContainer.append(formControl);
+
+        document.body.append(formContainer);
+
+        function auth() {
+          const messageLabel = document.querySelector("#messageLabel");
+          //blank account or password
+          if (
+            !window.request.parameter.account ||
+            !window.request.parameter.password
+          ) {
+            messageLabel.innerHTML =
+              "Account or password should not be blanked!";
+            if (messageLabel.classList.contains("hidden")) {
+              messageLabel.classList.remove("hidden");
+            }
+            return;
+          }
+
+          const accountsObject = Object.values(data.StudentInfo).filter(
+            (i) => i.ID == window.request.parameter.account
+          );
+
+          //wrong account
+          if (accountsObject.length != 1) {
+            messageLabel.innerHTML = "Wrong account or password!";
+            if (messageLabel.classList.contains("hidden")) {
+              messageLabel.classList.remove("hidden");
+            }
+            return;
+          }
+
+          //wrong password
+          if (accountsObject[0].password != window.request.parameter.password) {
+            messageLabel.innerHTML = "Wrong account or password!";
+            if (messageLabel.classList.contains("hidden")) {
+              messageLabel.classList.remove("hidden");
+            }
+            return;
+          }
+
+          window.request.identity = {
+            name: accountsObject[0].name,
+            ID: accountsObject[0].ID,
+            department: accountsObject[0].department,
+            grade: accountsObject[0].grade,
+          };
+          window.request.parameter = {};
+          window.isLogin = true;
+          window.request.func = "takenList";
+          doPost(request);
+          return;
+        }
+      }
+
+      function takenList(request) {
+        //getData
+
+        //show
+        document.body.innerHTML =
+          '<input type="hidden" id="func" name="func" value="' +
+          request.func +
+          '">';
+        console.log("takenList", request);
+
+        document.body.append(toHeaderContainer(request));
+        document.body.append(toPersonInfomationContainer(request.identity));
+
+        //已修學分
+
+        //選課清單
+        const container = document.createElement("div");
+        container.id = "container";
+
+        const rObj = toRegistrationObject(request.identity);
+        const rObjKeys = Object.keys(rObj);
+
+        for (let i = 0; i < rObjKeys.length; i++) {
+          let key = rObjKeys[i];
+          container.innerHTML += "<p>---" + key + "---</p>";
+          let courses = rObj[key];
+          if (!courses.length) {
+            container.innerHTML += "<p>無。</p>";
+            continue;
+          }
+          for (let j = 0; j < courses.length; j++) {
+            let course = courses[j];
+            container.innerHTML +=
+              "<p>" +
+              course.semester +
+              ", " +
+              course.courseID +
+              ", " +
+              course.name +
+              ", " +
+              course.teacher +
+              ", " +
+              course.department +
+              ", " +
+              course.description +
+              ", " +
+              course.core +
+              "</p>";
+          }
+        }
+
+        document.body.append(container);
+      }
+
+      function creditList(request) {
+        //getData
+
+        //show
+        document.body.innerHTML =
+          '<input type="hidden" id="func" name="func" value="' +
+          request.func +
+          '">';
+        console.log("creditList", request);
+
+        document.body.append(toHeaderContainer(request));
+        document.body.append(toPersonInfomationContainer(request.identity));
+      }
+
+      function registerList(request) {
+        //getData
+
+        //action
+
+        //show
+        document.body.innerHTML =
+          '<input type="hidden" id="func" name="func" value="' +
+          request.func +
+          '">';
+        console.log("registerList", request);
+
+        document.body.append(toHeaderContainer(request));
+        document.body.append(toPersonInfomationContainer(request.identity));
+
+        function addCourse(request) {}
+        function removeCourse(request) {}
+      }
+
+      function scheduleList(request) {
+        //getData
+
+        //show
+        document.body.innerHTML =
+          '<input type="hidden" id="func" name="func" value="' +
+          request.func +
+          '">';
+        console.log("scheduleList", request);
+
+        document.body.append(toHeaderContainer(request));
+        document.body.append(toPersonInfomationContainer(request.identity));
+      }
+
+      function toHeaderContainer(request) {
+        const funcObject = {
+          takenList: {
+            id: "takenList",
+            name: "已修學分登記清單",
+          },
+          creditList: {
+            id: "creditList",
+            name: "已修學分分布",
+          },
+          registerList: {
+            id: "registerList",
+            name: "志願序",
+          },
+          scheduleList: {
+            id: "scheduleList",
+            name: "預覽課表&推薦課程",
+          },
+        };
+        const container = document.createElement("div");
+        container.id = "headerContainer";
+
+        const header = document.createElement("div");
+        header.id = "header";
+        const headerTitle = document.createElement("h1");
+        headerTitle.id = "title";
+        headerTitle.innerHTML = funcObject[request.func].name;
+
+        const ul = document.createElement("ul");
+
+        for (let i = 0; i < Object.values(funcObject).length; i++) {
+          const li = document.createElement("li");
+          li.id = Object.values(funcObject)[i].id;
+
+          const a = document.createElement("a");
+          a.href = "#";
+          a.id = "a-" + Object.values(funcObject)[i].id;
+          a.innerHTML = Object.values(funcObject)[i].name;
+          a.addEventListener("click", function handler(e) {
+            //   console.log(e.target)
+            request.func = e.target.id.split("-")[1];
+            request.parameter = {};
+            doPost(request);
+            this.removeEventListener("click", handler);
+          });
+
+          li.append(a);
+          ul.append(li);
+        }
+
+        header.append(headerTitle);
+        container.append(header);
+        container.append(ul);
+
+        document.title = funcObject[request.func].name + " - " + titleName;
+
+        return container;
+      }
+
+      function toPersonInfomationContainer(identity) {
+        const container = document.createElement("div");
+        container.id = "personInfomationContainer";
+
+        // name
+        const nameLabel = document.createElement("p");
+        nameLabel.id = "nameLabel";
+        nameLabel.innerHTML = "姓名：" + identity.name;
+        // ID
+        const IDLabel = document.createElement("p");
+        IDLabel.id = "IDLabel";
+        IDLabel.innerHTML = "學號：" + identity.ID;
+        // department
+        const departmentLabel = document.createElement("p");
+        departmentLabel.id = "departmentLabel";
+        departmentLabel.innerHTML = "系所：" + identity.department;
+        // grade
+        const gradeLabel = document.createElement("p");
+        gradeLabel.id = "gradeLabel";
+        gradeLabel.innerHTML = "年級：" + identity.grade;
+
+        container.append(nameLabel);
+        container.append(IDLabel);
+        container.append(departmentLabel);
+        container.append(gradeLabel);
+
+        return container;
+      }
+
+      function toRegistrationObject(identity) {
+        const courseInfo = data.CourseInfo;
+
+        const f = data.Registration.filter((i) => i.studentID == identity.ID);
+        f.map((i) => {
+          const semester = i.semester;
+          const id = i.courseID;
+          const matched = courseInfo.find(
+            (j) => j.semester == semester && j.id == id
+          );
+          console.log(matched);
+          if (matched == undefined) {
+            return;
+          }
+          i.name = matched.name;
+          i.teacher = matched.teacher;
+          i.credit = matched.credit;
+          i.time = matched.time;
+          i.department = matched.department;
+          i.description = matched.description;
+          i.core = matched.core;
+        });
+
+        console.log(f);
+
+        const registrationObject = {
+          必修: f.filter((i) => i.type == "必修"), //need sorted by id
+          選修: f.filter((i) => i.type == "選修"), //need sorted by id
+          通識: f.filter((i) => i.type == "通識"), //need sorted by id
+          體育: f.filter((i) => i.type == "體育"), //need sorted by id
+          其他: f.filter((i) => i.type == "其他"), //need sorted by id
+        };
+        return registrationObject;
+
+        // semester	id	name	teacher	credit	time	department	description
+      }
+    </script>
+  </head>
+  <body>
+    Loading...
+  </body>
+</html>
